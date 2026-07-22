@@ -24,7 +24,7 @@ EDITABLE_STATUSES = (RequestStatus.NEW, RequestStatus.IN_PROGRESS)
 
 class MedicalServiceViewSet(viewsets.ModelViewSet):
     serializer_class = MedicalServiceSerializer
-    http_method_names = ['get', 'post', 'patch', 'head']
+    http_method_names = ['get', 'post', 'patch']
 
     def get_queryset(self):
         qs = MedicalService.objects.order_by('name')
@@ -47,7 +47,7 @@ class MedicalRequestViewSet(viewsets.ModelViewSet):
     filterset_class = MedicalRequestFilter
     ordering_fields = ['created_at', 'desired_date']
     ordering = ['-created_at']
-    http_method_names = ['get', 'post', 'patch', 'head']
+    http_method_names = ['get', 'post', 'patch']
 
     def get_serializer_class(self):
         if self.action == 'list':
