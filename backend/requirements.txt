@@ -1,0 +1,9 @@
+Django==5.2.4
+djangorestframework
+psycopg2-binary
+djangorestframework-simplejwt
+pytest
+pytest-django
+python-dotenv
+django-filter
+django-cors-headers
