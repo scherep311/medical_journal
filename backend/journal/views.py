@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
-from django.db.models import Count
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, OuterRef, Subquery
 
 from journal.models import MedicalService, MedicalRequest, RequestStatus, StatusHistory
 from journal.filters import MedicalRequestFilter
@@ -112,24 +112,25 @@ class MedicalRequestViewSet(viewsets.ModelViewSet):
             .order_by('-count')
         )
 
-        history = (
+        entered_in_progress_at = StatusHistory.objects.filter(
+            request_id=OuterRef('request_id'),
+            to_status=RequestStatus.IN_PROGRESS,
+        ).values('changed_at')[:1]
+
+        avg_in_progress_duration = (
             StatusHistory.objects
-            .filter(request__in=queryset)
-            .order_by('request_id', 'changed_at')
-            .values('request_id', 'from_status', 'to_status', 'changed_at')
+            .filter(request__in=queryset, from_status=RequestStatus.IN_PROGRESS)
+            .annotate(entered_at=Subquery(entered_in_progress_at))
+            .annotate(
+                in_progress_duration=ExpressionWrapper(
+                    F('changed_at') - F('entered_at'), output_field=DurationField()
+                )
+            )
+            .aggregate(avg=Avg('in_progress_duration'))['avg']
         )
-        entered_in_progress_at = {}
-        in_progress_durations = []
-        for h in history:
-            if h['to_status'] == RequestStatus.IN_PROGRESS:
-                entered_in_progress_at[h['request_id']] = h['changed_at']
-            elif h['from_status'] == RequestStatus.IN_PROGRESS:
-                entered_at = entered_in_progress_at.pop(h['request_id'], None)
-                if entered_at:
-                    in_progress_durations.append((h['changed_at'] - entered_at).total_seconds())
         avg_in_progress_seconds = (
-            round(sum(in_progress_durations) / len(in_progress_durations))
-            if in_progress_durations else None
+            round(avg_in_progress_duration.total_seconds())
+            if avg_in_progress_duration is not None else None
         )
 
         return Response({
