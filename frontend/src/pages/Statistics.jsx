@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { STATUS_LABELS } from '../constants';
+import { formatDuration } from '../utils/format';
 import DateRangeFilter from '../components/DateRangeFilter';
 import AsyncState from '../components/AsyncState';
 
@@ -36,6 +37,7 @@ export default function Statistics() {
         <div className="stats-grid">
           <div className="card stats-card">
             <p className="stats-total-big">Всего заявок: {stats?.total}</p>
+            <p>Среднее время в статусе «В работе»: {formatDuration(stats?.avg_in_progress_seconds)}</p>
             {stats && Object.entries(stats.by_status).map(([status, count]) => (
               <div key={status} className="bar-row">
                 <div className="bar-row-labels">

@@ -5,7 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from django.db.models import Count
 
-from journal.models import MedicalService, MedicalRequest, RequestStatus
+from journal.models import MedicalService, MedicalRequest, RequestStatus, StatusHistory
 from journal.filters import MedicalRequestFilter
 from journal.exceptions import RequestEditNotAllowedError
 from journal.serializers import (
@@ -112,6 +112,26 @@ class MedicalRequestViewSet(viewsets.ModelViewSet):
             .order_by('-count')
         )
 
+        history = (
+            StatusHistory.objects
+            .filter(request__in=queryset)
+            .order_by('request_id', 'changed_at')
+            .values('request_id', 'from_status', 'to_status', 'changed_at')
+        )
+        entered_in_progress_at = {}
+        in_progress_durations = []
+        for h in history:
+            if h['to_status'] == RequestStatus.IN_PROGRESS:
+                entered_in_progress_at[h['request_id']] = h['changed_at']
+            elif h['from_status'] == RequestStatus.IN_PROGRESS:
+                entered_at = entered_in_progress_at.pop(h['request_id'], None)
+                if entered_at:
+                    in_progress_durations.append((h['changed_at'] - entered_at).total_seconds())
+        avg_in_progress_seconds = (
+            round(sum(in_progress_durations) / len(in_progress_durations))
+            if in_progress_durations else None
+        )
+
         return Response({
             'total': total_count,
             'by_status': by_status,
@@ -119,4 +139,5 @@ class MedicalRequestViewSet(viewsets.ModelViewSet):
                 {'service_name': s['service__name'], 'count': s['count']}
                 for s in services
             ],
+            'avg_in_progress_seconds': avg_in_progress_seconds,
         }, status=status.HTTP_200_OK)

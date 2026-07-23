@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import User, UserRole
 from journal.exceptions import InvalidTransitionError
-from journal.models import ALLOWED_TRANSITIONS, MedicalRequest, MedicalService, RequestStatus
+from journal.models import ALLOWED_TRANSITIONS, MedicalRequest, MedicalService, RequestStatus, StatusHistory
 from journal.validators import validate_snils
 
 
